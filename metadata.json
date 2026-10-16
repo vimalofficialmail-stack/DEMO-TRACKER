@@ -1,0 +1,8 @@
+{
+  "name": "Pre-Sales Trainee Demo Tracker",
+  "description": "Daily demo report tracker for pre-sales trainees with WhatsApp EOD report generation, calendar, and history. Developed by VIMAL GUPTA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Pre-sales trainee profile information and targets",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Unique Firebase Authentication UID of the trainee"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the trainee",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the trainee",
+          "maxLength": 150
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Pre-sales Employee ID (e.g. EMP-101)",
+          "maxLength": 50
+        },
+        "teamLead": {
+          "type": "string",
+          "description": "Name of assigned Team Lead",
+          "maxLength": 100
+        },
+        "batch": {
+          "type": "string",
+          "description": "Pre-sales trainee batch name",
+          "maxLength": 100
+        },
+        "dailyTarget": {
+          "type": "number",
+          "description": "Target daily demo bookings count"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of profile creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last profile update"
+        }
+      },
+      "required": ["userId", "name", "employeeId", "teamLead", "batch", "dailyTarget"]
+    },
+    "DailyMetric": {
+      "title": "DailyMetric",
+      "description": "Daily demo bookings, completions, and cancellations report",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner trainee UID"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date in YYYY-MM-DD format",
+          "maxLength": 10
+        },
+        "totalBookings": {
+          "type": "number",
+          "description": "Total demo bookings count"
+        },
+        "todayD0": {
+          "type": "number",
+          "description": "Bookings for today (D0)"
+        },
+        "tomorrowD1": {
+          "type": "number",
+          "description": "Bookings for tomorrow (D1)"
+        },
+        "completions": {
+          "type": "number",
+          "description": "Completed demos count"
+        },
+        "cancellations": {
+          "type": "number",
+          "description": "Cancelled demos count"
+        },
+        "remarks": {
+          "type": "string",
+          "description": "Daily remarks notes",
+          "maxLength": 2000
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["userId", "date", "totalBookings", "todayD0", "tomorrowD1", "completions", "cancellations"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of trainee user profiles"
+    },
+    "/users/{userId}/metrics/{date}": {
+      "schema": "DailyMetric",
+      "description": "Subcollection of daily demo metrics keyed by date"
+    }
+  }
+}

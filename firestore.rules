@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId == request.auth.uid &&
+             data.name is string && data.name.size() <= 100 &&
+             data.employeeId is string && data.employeeId.size() <= 50 &&
+             data.teamLead is string && data.teamLead.size() <= 100 &&
+             data.batch is string && data.batch.size() <= 100 &&
+             data.dailyTarget is number && data.dailyTarget >= 0 && data.dailyTarget <= 1000;
+    }
+
+    function isValidDailyMetric(data) {
+      return data.userId == request.auth.uid &&
+             data.date is string && data.date.size() == 10 &&
+             data.totalBookings is number && data.totalBookings >= 0 && data.totalBookings <= 5000 &&
+             data.todayD0 is number && data.todayD0 >= 0 && data.todayD0 <= 5000 &&
+             data.tomorrowD1 is number && data.tomorrowD1 >= 0 && data.tomorrowD1 <= 5000 &&
+             data.completions is number && data.completions >= 0 && data.completions <= 5000 &&
+             data.cancellations is number && data.cancellations >= 0 && data.cancellations <= 5000 &&
+             (!('remarks' in data) || (data.remarks is string && data.remarks.size() <= 2000));
+    }
+
+    // Trainee User Profile
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      allow update: if isOwner(userId) &&
+                       isValidUserProfile(request.resource.data) &&
+                       request.resource.data.userId == resource.data.userId;
+
+      // Trainee's daily demo metrics subcollection
+      match /metrics/{date} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(date) &&
+                         isValidDailyMetric(request.resource.data);
+        allow update: if isOwner(userId) &&
+                         isValidId(date) &&
+                         isValidDailyMetric(request.resource.data) &&
+                         request.resource.data.userId == resource.data.userId;
+        allow delete: if isOwner(userId) && isValidId(date);
+      }
+    }
+  }
+}
