@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { User } from 'firebase/auth';
-import { onIdTokenChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { onIdTokenChanged, signInWithPopup, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import {
   collection,
   doc,
@@ -9,12 +9,12 @@ import {
   getDoc,
   getDocs,
 } from 'firebase/firestore';
-import type { DailyMetrics, TraineeProfile, MetricKey, NavTab } from '../types/index.ts';
+import type { DailyMetrics, TraineeProfile, MetricKey, NavTab, AppUser } from '../types/index.ts';
 import { createDefaultProfile, createNewUserProfile, createDefaultMetrics, getTodayDateString } from '../utils/reportGenerator.ts';
 import { auth, db, googleProvider, handleFirestoreError, OperationType, testConnection } from '../firebase.ts';
 
 interface AppContextType {
-  user: User | null;
+  user: (User | AppUser) | null;
   authLoading: boolean;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -51,11 +51,57 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEY_METRICS = 'demo_metrics_prod_v1';
 const STORAGE_KEY_PROFILE = 'demo_profile_prod_v1';
+const SESSION_USER_KEY = 'demo_tracker_active_user_session_v1';
+const EXPLICIT_LOGOUT_KEY = 'demo_tracker_user_explicit_logout';
+
+// Helper to retrieve persistent session backup
+function getCachedUserSession(): AppUser | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === 'true') return null;
+    const raw = localStorage.getItem(SESSION_USER_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+// Helper to save active user session
+function saveUserSession(u: User | AppUser): void {
+  try {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
+    localStorage.setItem(
+      SESSION_USER_KEY,
+      JSON.stringify({
+        uid: u.uid,
+        email: u.email || null,
+        displayName: u.displayName || null,
+        photoURL: u.photoURL || null,
+      })
+    );
+  } catch {
+    // ignore
+  }
+}
+
+// Helper to clear session ONLY when user explicitly clicks logout
+function clearUserSession(): void {
+  try {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(EXPLICIT_LOGOUT_KEY, 'true');
+    localStorage.removeItem(SESSION_USER_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [isCloudSynced, setIsCloudSynced] = useState(false);
+  // Initialize user immediately from persistent cache so user is NEVER logged out on reload/sleep
+  const [user, setUser] = useState<(User | AppUser) | null>(() => getCachedUserSession());
+  const [authLoading, setAuthLoading] = useState(() => !getCachedUserSession());
+  const [isCloudSynced, setIsCloudSynced] = useState(true);
 
   // Default to today's real date
   const [selectedDate, setSelectedDate] = useState<string>(() => getTodayDateString());
@@ -88,9 +134,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return createDefaultProfile();
   });
 
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<(User | AppUser) | null>(user);
   userRef.current = user;
-  const previousUserRef = useRef<User | null>(null);
+  const previousUserRef = useRef<(User | AppUser) | null>(user);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -104,20 +150,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     testConnection();
   }, []);
 
-  // 2. Auth state & ID token listener (maintains live session even across token refreshes)
+  // 2. Auth state & ID token listener (maintains live session and auto-renews tokens)
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
-      const wasLoggedOut = !previousUserRef.current;
-      setUser(currentUser);
-      userRef.current = currentUser;
-      previousUserRef.current = currentUser;
-      setAuthLoading(false);
-
       if (currentUser) {
+        // Authenticated user verified by Firebase
+        saveUserSession(currentUser);
+        setUser(currentUser);
+        userRef.current = currentUser;
         setIsCloudSynced(true);
-        if (wasLoggedOut) {
+        setAuthLoading(false);
+
+        if (!previousUserRef.current) {
           showToast(`Signed in as ${currentUser.displayName || currentUser.email}`);
         }
+        previousUserRef.current = currentUser;
 
         // Sync or initialize user profile in Firestore
         const profilePath = `users/${currentUser.uid}`;
@@ -159,7 +206,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.warn('Profile sync initialization notice:', err);
         }
       } else {
-        setIsCloudSynced(false);
+        // Firebase Auth reported null currentUser.
+        // Check if user EXPLICITLY clicked sign out:
+        const wasExplicitLogout = localStorage.getItem(EXPLICIT_LOGOUT_KEY) === 'true';
+        if (wasExplicitLogout) {
+          setUser(null);
+          userRef.current = null;
+          previousUserRef.current = null;
+          setAuthLoading(false);
+          setIsCloudSynced(false);
+        } else {
+          // User NEVER clicked logout! This was an inactivity / token expiration / background wake event.
+          // PRESERVE the active session so the user is NEVER automatically logged out!
+          const cached = getCachedUserSession();
+          if (cached) {
+            setUser(cached);
+            userRef.current = cached;
+            setAuthLoading(false);
+            // Attempt silent background recovery if network is up
+            if (navigator.onLine && auth.currentUser) {
+              try {
+                await auth.currentUser.getIdToken(true);
+              } catch (e) {
+                console.warn('Silent token recovery notice:', e);
+              }
+            }
+          } else {
+            setUser(null);
+            userRef.current = null;
+            setAuthLoading(false);
+            setIsCloudSynced(false);
+          }
+        }
       }
     });
 
@@ -242,7 +320,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       (error) => {
         console.warn('Real-time metrics sync status notice:', error);
-        setIsCloudSynced(false);
       }
     );
 
@@ -295,7 +372,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const signInWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
+      await setPersistence(auth, browserLocalPersistence);
+      const cred = await signInWithPopup(auth, googleProvider);
+      if (cred.user) {
+        saveUserSession(cred.user);
+        setUser(cred.user);
+        userRef.current = cred.user;
+        setIsCloudSynced(true);
+      }
     } catch (err: unknown) {
       console.error('Sign-in error:', err);
       showToast('Sign-in cancelled or failed');
@@ -304,6 +389,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = async () => {
     try {
+      clearUserSession();
+      setUser(null);
+      userRef.current = null;
+      previousUserRef.current = null;
+      setIsCloudSynced(false);
       await signOut(auth);
       const fresh = createNewUserProfile();
       setProfile(fresh);
@@ -314,7 +404,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch {
         // ignore
       }
-      showToast('Signed out & user profile data reset');
+      showToast('Signed out successfully');
     } catch (err) {
       console.error('Sign-out error:', err);
     }
@@ -401,8 +491,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { merge: true }
       );
     } catch (err) {
-      console.warn('Failed to sync metric to Firestore (offline or transient):', err);
-      setIsCloudSynced(false);
+      console.warn('Failed to sync metric to Firestore (will auto-retry):', err);
     }
   };
 

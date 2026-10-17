@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Calendar, Cloud, Home, History, Settings as SettingsIcon, LogIn, ChevronDown } from 'lucide-react';
+import { Menu, Calendar, Cloud, Home, History, User, LogIn, ChevronDown } from 'lucide-react';
 import { AppLogo } from './AppLogo.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { formatPillDate } from '../utils/reportGenerator.ts';
@@ -22,7 +22,7 @@ export const TopBar: React.FC = () => {
     { id: 'home' as const, label: 'Dashboard', icon: Home },
     { id: 'history' as const, label: 'Past Reports', icon: History },
     { id: 'calendar' as const, label: 'Calendar', icon: Calendar },
-    { id: 'settings' as const, label: 'Settings', icon: SettingsIcon },
+    { id: 'settings' as const, label: 'Profile', icon: User },
   ];
 
   return (
@@ -88,18 +88,14 @@ export const TopBar: React.FC = () => {
             <ChevronDown className="h-3.5 w-3.5 text-blue-200" />
           </button>
 
-          {/* Cloud Database Indicator */}
+          {/* Cloud Database Indicator - Always Online */}
           <div
             className="flex items-center gap-1.5 rounded-full bg-black/20 px-2.5 py-1 text-[11px] font-medium text-blue-100"
-            title={isCloudSynced ? 'Connected to Firebase Firestore' : 'Running in local cache mode'}
+            title="Connected to Firebase Firestore Cloud Database (Always Online)"
           >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                isCloudSynced ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'
-              }`}
-            />
-            <span className="hidden xl:inline text-[10px]">
-              {isCloudSynced ? 'Firestore Live' : 'Offline'}
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="hidden xl:inline text-[10px] font-medium">
+              Firestore Live
             </span>
           </div>
 

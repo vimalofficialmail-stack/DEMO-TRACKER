@@ -71,7 +71,7 @@ export const SettingsTab: React.FC = () => {
     <div className="flex flex-col gap-5 pb-24 md:pb-10">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-extrabold text-slate-900">Trainee Settings</h1>
+        <h1 className="text-xl font-extrabold text-slate-900">Trainee Profile</h1>
         <p className="text-xs text-slate-500">Manage your profile, cloud database, and team reporting info</p>
       </div>
 

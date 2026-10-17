@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { formatPillDate, calculateCompletionRate, generateWhatsAppReportText, getWhatsAppShareUrl } from '../utils/reportGenerator.ts';
 import { WhatsAppIcon } from './WhatsAppIcon.tsx';
 import { CompletionTrendsChart } from './CompletionTrendsChart.tsx';
+import { MonthlyCompletionsBarChart } from './MonthlyCompletionsBarChart.tsx';
 import { exportDailyReportToPdf } from '../utils/pdfGenerator.ts';
 import { Calendar, Search, ArrowRight, CheckCircle2, AlertCircle, FileText, Share2, Layers, FileDown } from 'lucide-react';
 
@@ -55,6 +56,9 @@ export const HistoryTab: React.FC = () => {
           <p className="text-xs text-slate-500">History feed of your daily demo logs, visual completion trends, and WhatsApp submissions</p>
         </div>
       </div>
+
+      {/* Dashboard Section: Monthly Completed Demos Bar Chart */}
+      <MonthlyCompletionsBarChart />
 
       {/* Completion Trends Chart Section (Recharts 7D / 30D) */}
       <CompletionTrendsChart />

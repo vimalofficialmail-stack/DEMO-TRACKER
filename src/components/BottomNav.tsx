@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, History, Calendar, Settings } from 'lucide-react';
+import { Home, History, Calendar, User } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import type { NavTab } from '../types/index.ts';
 
@@ -13,7 +13,7 @@ const TABS: TabItem[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'history', label: 'History', icon: History },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'settings', label: 'Profile', icon: User },
 ];
 
 export const BottomNav: React.FC = () => {

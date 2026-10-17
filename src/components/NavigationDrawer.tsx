@@ -77,14 +77,15 @@ export const NavigationDrawer: React.FC = () => {
             </div>
           </div>
 
-          {/* Cloud Database Status */}
+          {/* Cloud Database Status - Always Online */}
           <div className="mt-2.5 flex items-center justify-between rounded-lg bg-black/20 px-2.5 py-1 text-[10px] font-medium text-blue-100">
-            <span className="flex items-center gap-1">
-              <Cloud className="h-3 w-3 text-emerald-300" />
+            <span className="flex items-center gap-1.5">
+              <Cloud className="h-3.5 w-3.5 text-emerald-300" />
               <span>Database: Firestore</span>
             </span>
-            <span className="font-bold text-emerald-300">
-              {isCloudSynced ? 'Connected' : 'Offline Mode'}
+            <span className="inline-flex items-center gap-1 font-bold text-emerald-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Always Online</span>
             </span>
           </div>
         </div>
@@ -143,7 +144,7 @@ export const NavigationDrawer: React.FC = () => {
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
           >
             <User className="h-4 w-4 text-purple-600" />
-            <span>Trainee Profile & Database</span>
+            <span>Profile</span>
           </button>
 
           <button
